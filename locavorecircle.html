@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+   <head>
+      <title>Locavore Circle</title>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <style type="text/css">
+      body
+      {
+        background-color:#F8F4D5;
+        font-family:'Helvetica', Arial, Verdana;
+      }
+      </style>
+
+      <script type="text/javascript" src="http://dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=6.2"></script>
+      <script type="text/javascript">
+      
+      var map = null;
+      var dataLayer = new VEShapeLayer();
+      var searchShapeLayer = new VEShapeLayer();
+            
+      function GetMap()
+      {
+         map = new VEMap('myMap');
+         map.LoadMap(); 
+         map.AddShapeLayer(dataLayer);
+         map.AddShapeLayer(searchShapeLayer);
+      }
+      
+      function mi_to_km(miles)
+      {
+        return 1.609344 * miles;
+      }
+         
+      function FindLoc()
+      {
+         try
+         {
+            map.Find(null, document.getElementById("txtWhere").value);
+         }
+         catch(e)
+         {
+            alert(e.message);
+         }
+      }
+      function draw_location_circle()
+      {
+        drawCircle(map.GetCenter(),mi_to_km(document.getElementById("distanceamt").value));
+      }
+      function hideEachShape()
+      {
+        for(var i=0;i<dataLayer.GetShapeCount();i++)
+      {
+        var shape = dataLayer.GetShapeByIndex(i);
+        shape.Hide();
+       }
+      }
+      
+      //calculation of Haversine Forumla
+      function distance(latlong,latlong2)
+      {
+        var lat1 = latlong.Latitude;
+        var lon1 = latlong.Longitude;
+        var lat2 = latlong2.Latitude;
+        var lon2 = latlong2.Longitude;
+        var earthRadius = 6371;
+
+        var factor = Math.PI/180;
+        var dLat = (lat2-lat1)*factor;
+        var dLon = (lon2-lon1)*factor; 
+        var a = Math.sin(dLat/2) * Math.sin(dLat/2)+Math.cos(lat1*factor)*Math.cos(lat2*factor)*Math.sin(dLon/2) * Math.sin(dLon/2); 
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        var d = earthRadius * c;
+
+        return d;
+      }
+      function radiusSearch(origin, radius) 
+      {   
+        // origin: latlong
+        // radius: in km
+        
+        //hide previous results
+            hideEachShape();
+            
+            //clear the search shape layer
+            searchShapeLayer.DeleteAllShapes();
+        
+        
+        for(var i=0; i < dataLayer.GetShapeCount(); i++)
+        {
+          var shape = dataLayer.GetShapeByIndex(i);
+          var latlong = shape.GetPoints()[0];
+          
+          var d = distance(origin,latlong);
+        
+          if(Math.abs(d)<= Math.abs(radius))
+          {
+            shape.Show();
+          }
+        }
+        
+        drawCircle(origin,radius);
+      }
+      function drawCircle(origin,radius)
+      {  
+        var earthRadius = 6371;
+
+        //latitude in radians
+          var lat = (origin.Latitude*Math.PI)/180; 
+
+          //longitude in radians
+          var lon = (origin.Longitude*Math.PI)/180; 
+
+          //angular distance covered on earth's surface
+          var d = parseFloat(radius)/earthRadius;  
+
+          var points = new Array();
+          for (i = 0; i <= 360; i++) 
+          { 
+              var point = new VELatLong(0,0)            
+              var bearing = i * Math.PI / 180; //rad
+              point.Latitude = Math.asin(Math.sin(lat)*Math.cos(d) + Math.cos(lat)*Math.sin(d)*Math.cos(bearing));
+              point.Longitude = ((lon + Math.atan2(Math.sin(bearing)*Math.sin(d)*Math.cos(lat), Math.cos(d)-Math.sin(lat)*Math.sin(point.Latitude))) * 180) / Math.PI;
+              point.Latitude = (point.Latitude * 180) / Math.PI;
+              points.push(point);
+          }
+
+         var circle = new VEShape(VEShapeType.Polyline, points); 
+         circle.HideIcon();
+         searchShapeLayer.AddShape(circle);
+
+         map.SetMapView(points);
+      }
+            
+      </script>
+   </head>
+   <body onload="GetMap();">
+     <center>
+     <div>
+       <h3>Locavore Circle</h3>
+       <p>Enter a location and a radius. Press Find. Then, Press the 'Circle' button.</p>
+       Location: <INPUT id="txtWhere" type="text" name="txtWhere">
+       <INPUT id="find" type="button" value="Find" name="find" onclick="FindLoc();">
+       Radius (in miles): <INPUT id="distanceamt" type="text" name="distanceamt" value="100">        
+       <INPUT id="circle" type="button" value="Circle" name="circle" onclick="draw_location_circle();">        
+       </div>
+      <div id='myMap' style="position:relative; width:750px; height:750px;"></div>
+      </center>
+   </body>
+</html>
